@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # User provided SDK path
 if(NOT DEFINED IDASDK)
-    set(IDASDK "/home/lotso/.idapro/idasdk91/")
+    set(IDASDK "~/.idapro/idasdk91/")
 endif()
 
 if(NOT EXISTS "${IDASDK}")
