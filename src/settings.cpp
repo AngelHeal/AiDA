@@ -70,8 +70,16 @@ const std::vector<std::string> settings_t::openrouter_models = {
 };
 
 const std::vector<std::string> settings_t::anthropic_models = {
-  "claude-opus-4-0",
-  "claude-sonnet-4-0",
+  "claude-opus-4-5 (High Effort)",
+  "claude-opus-4-5 (Medium Effort)",
+  "claude-opus-4-5 (Low Effort)",
+  "claude-sonnet-4-5",
+  "claude-haiku-4-5",
+  "claude-opus-4-1",
+  "claude-opus-4",
+  "claude-sonnet-4",
+  "claude-3-7-sonnet-thought",
+  "claude-3-7-sonnet",
   "claude-3.5-sonnet-latest",
   "claude-3.5-haiku-latest",
   "claude-3-opus-latest",
@@ -284,7 +292,7 @@ settings_t::settings_t() :
     openrouter_api_key(""),
     openrouter_model_name("moonshotai/kimi-k2:free"),
     anthropic_api_key(""),
-    anthropic_model_name("claude-3.5-sonnet-latest"),
+    anthropic_model_name("claude-sonnet-4-5"),
     anthropic_base_url(""),
     copilot_proxy_address("http://127.0.0.1:4141"),
     copilot_model_name("gpt-4.1"),

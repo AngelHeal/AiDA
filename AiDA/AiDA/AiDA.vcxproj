@@ -141,14 +141,14 @@
       <PreprocessorDefinitions>__NT__;__IDP__;__X64__;__EA64__;_CRT_SECURE_NO_WARNINGS;CPPHTTPLIB_OPENSSL_SUPPORT;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>$(IDASDK)\include;C:\Program Files\OpenSSL-Win64\include;$(ProjectDir)..\..\libs\cpp-httplib;$(ProjectDir)..\..\libs;$(ProjectDir)..\..\idasdk91\idasdk91\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(IDASDK)\include;C:\Program Files\OpenSSL-Win64\include;$(ProjectDir)..\..\libs\cpp-httplib;$(ProjectDir)..\..\libs;$(Qt5);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <StructMemberAlignment>8Bytes</StructMemberAlignment>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(IDASDK)\lib\x64_win_vc_64;C:\Program Files\OpenSSL-Win64\lib\VC\x64\MD;$(ProjectDir)..\..\idasdk91\idasdk91\lib\x64_win_vc_64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(IDASDK)\lib\x64_win_vc_64;C:\Program Files\OpenSSL-Win64\lib\VC\x64\MD;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>ida.lib;libcrypto.lib;libssl.lib;ws2_32.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
