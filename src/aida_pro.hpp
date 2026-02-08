@@ -90,6 +90,7 @@
 
 
 #include "settings.hpp"
+#include "localization.hpp"
 #include "prompts.hpp"
 #include "ai_client.hpp"
 #include "ida_utils.hpp"

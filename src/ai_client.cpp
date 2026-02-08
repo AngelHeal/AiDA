@@ -3,6 +3,7 @@ using json = nlohmann::json;
 
 
 static int idaapi timer_cb(void* ud);
+static std::string get_base_prompt_text();
 
 struct AIClient::ai_request_t : public exec_request_t
 {
@@ -45,7 +46,7 @@ struct AIClient::ai_request_t : public exec_request_t
 
             if (was_cancelled)
             {
-                msg("AiDA: Request for %s was cancelled.\n", request_type.c_str());
+                msg(localization::tr("AiDA: Request for %s was cancelled.\n", "AiDA: Запрос для %s был отменён.\n"), request_type.c_str());
             }
             else if (callback)
             {
@@ -54,11 +55,16 @@ struct AIClient::ai_request_t : public exec_request_t
         }
         catch (const std::exception& e)
         {
-            warning("AI Assistant: Exception caught during AI request callback execution: %s", e.what());
+            warning(localization::tr(
+                "AI Assistant: Exception caught during AI request callback execution: %s",
+                "AI Assistant: Исключение при выполнении callback запроса AI: %s"),
+                e.what());
         }
         catch (...)
         {
-            warning("AI Assistant: Unknown exception caught during AI request callback execution.");
+            warning(localization::tr(
+                "AI Assistant: Unknown exception caught during AI request callback execution.",
+                "AI Assistant: Неизвестное исключение при выполнении callback запроса AI."));
         }
 
         delete this;
@@ -84,12 +90,17 @@ static int idaapi timer_cb(void* ud)
     if (!client->_is_request_active.load())
     {
         client->_is_request_active = true;
-        msg("AiDA: Request for %s is in progress, please wait...\n", client->_current_request_type.c_str());
+        msg(localization::tr(
+            "AiDA: Request for %s is in progress, please wait...\n",
+            "AiDA: Запрос для %s выполняется, пожалуйста подождите...\n"),
+            client->_current_request_type.c_str());
     }
     else
     {
         int elapsed = client->_elapsed_secs.load();
-        msg("AiDA: Request for %s is in progress... elapsed time: %d second%s.\n",
+        msg(localization::tr(
+            "AiDA: Request for %s is in progress... elapsed time: %d second%s.\n",
+            "AiDA: Запрос для %s выполняется... прошло: %d секунд%s.\n"),
             client->_current_request_type.c_str(),
             elapsed,
             elapsed == 1 ? "" : "s");
@@ -97,6 +108,17 @@ static int idaapi timer_cb(void* ud)
 
     client->_elapsed_secs++;
     return 1000; // Reschedule for 1 second later
+}
+
+static std::string get_base_prompt_text()
+{
+    const char* base_prompt = g_settings.prompt_profile == "pro"
+        ? BASE_PROMPT_PRO
+        : BASE_PROMPT;
+    nlohmann::json context = {
+        {"response_language", g_settings.response_language}
+    };
+    return ida_utils::format_prompt(base_prompt, context);
 }
 
 AIClient::AIClient(const settings_t& settings)
@@ -153,14 +175,14 @@ void AIClient::_generate(const std::string& prompt_text, callback_t callback, do
         }
         catch (const std::exception& e)
         {
-            result = "Error: Exception in worker thread: ";
+            result = localization::tr("Error: Exception in worker thread: ", "Ошибка: Исключение в рабочем потоке: ");
             result += e.what();
-            warning("AiDA: %s", result.c_str());
+            warning(localization::tr("AiDA: %s", "AiDA: %s"), result.c_str());
         }
         catch (...)
         {
-            result = "Error: Unknown exception in worker thread.";
-            warning("AiDA: %s", result.c_str());
+            result = localization::tr("Error: Unknown exception in worker thread.", "Ошибка: Неизвестное исключение в рабочем потоке.");
+            warning(localization::tr("AiDA: %s", "AiDA: %s"), result.c_str());
         }
 
         _task_done = true;
@@ -212,15 +234,16 @@ std::string AIClient::_http_post_request(
         }
 
         if (_cancelled)
-            return "Error: Operation cancelled.";
+            return localization::tr("Error: Operation cancelled.", "Ошибка: Операция отменена.");
 
         if (!res)
         {
             auto err = res.error();
             if (err == httplib::Error::Canceled) {
-                return "Error: Operation cancelled.";
+                return localization::tr("Error: Operation cancelled.", "Ошибка: Операция отменена.");
             }
-            return "Error: HTTP request failed: " + httplib::to_string(err);
+            return std::string(localization::tr("Error: HTTP request failed: ", "Ошибка: HTTP-запрос завершился неудачей: "))
+                + httplib::to_string(err);
         }
         if (res->status != 200)
         {
@@ -236,8 +259,12 @@ std::string AIClient::_http_post_request(
                     error_details = res->body.c_str();
                 }
             }
-            msg("AiDA: API Error. Host: %s, Status: %d\nResponse body: %s\n", host.c_str(), res->status, error_details.c_str());
-            return "Error: API returned status " + std::to_string(res->status);
+            msg(localization::tr(
+                "AiDA: API Error. Host: %s, Status: %d\nResponse body: %s\n",
+                "AiDA: Ошибка API. Хост: %s, Статус: %d\nТело ответа: %s\n"),
+                host.c_str(), res->status, error_details.c_str());
+            return std::string(localization::tr("Error: API returned status ", "Ошибка: API вернул статус "))
+                + std::to_string(res->status);
         }
         json jres = json::parse(res->body);
         return response_parser(jres);
@@ -248,8 +275,12 @@ std::string AIClient::_http_post_request(
             std::lock_guard<std::mutex> lock(_http_client_mutex);
             _http_client.reset();
         }
-        warning("AI Assistant: API call to %s failed: %s\n", host.c_str(), e.what());
-        return std::string("Error: API call failed. Details: ") + e.what();
+        warning(localization::tr(
+            "AI Assistant: API call to %s failed: %s\n",
+            "AI Assistant: Вызов API к %s завершился ошибкой: %s\n"),
+            host.c_str(), e.what());
+        return std::string(localization::tr("Error: API call failed. Details: ", "Ошибка: Вызов API завершился неудачей. Детали: "))
+            + e.what();
     }
 }
 
@@ -275,7 +306,10 @@ void AIClient::analyze_function(ea_t ea, callback_t callback)
         callback(context["message"].get<std::string>());
         return;
     }
-    std::string prompt = ida_utils::format_prompt(ANALYZE_FUNCTION_PROMPT, context);
+    const char* prompt_template = g_settings.prompt_profile == "pro"
+        ? ANALYZE_FUNCTION_PROMPT_PRO
+        : ANALYZE_FUNCTION_PROMPT;
+    std::string prompt = ida_utils::format_prompt(prompt_template, context);
 
     _generate(prompt, callback, _settings.temperature, "function analysis");
 }
@@ -288,7 +322,10 @@ void AIClient::suggest_name(ea_t ea, callback_t callback)
         callback(context["message"].get<std::string>());
         return;
     }
-    std::string prompt = ida_utils::format_prompt(SUGGEST_NAME_PROMPT, context);
+    const char* prompt_template = g_settings.prompt_profile == "pro"
+        ? SUGGEST_NAME_PROMPT_PRO
+        : SUGGEST_NAME_PROMPT;
+    std::string prompt = ida_utils::format_prompt(prompt_template, context);
     _generate(prompt, callback, 0.0, "name suggestion");
 }
 
@@ -300,7 +337,10 @@ void AIClient::generate_struct(ea_t ea, callback_t callback)
         callback(context["message"].get<std::string>());
         return;
     }
-    std::string prompt = ida_utils::format_prompt(GENERATE_STRUCT_PROMPT, context);
+    const char* prompt_template = g_settings.prompt_profile == "pro"
+        ? GENERATE_STRUCT_PROMPT_PRO
+        : GENERATE_STRUCT_PROMPT;
+    std::string prompt = ida_utils::format_prompt(prompt_template, context);
     _generate(prompt, callback, 0.0, "struct generation");
 }
 
@@ -321,7 +361,10 @@ void AIClient::generate_hook(ea_t ea, callback_t callback)
     
     context["func_name"] = clean_func_name;
 
-    std::string prompt = ida_utils::format_prompt(GENERATE_HOOK_PROMPT, context);
+    const char* prompt_template = g_settings.prompt_profile == "pro"
+        ? GENERATE_HOOK_PROMPT_PRO
+        : GENERATE_HOOK_PROMPT;
+    std::string prompt = ida_utils::format_prompt(prompt_template, context);
     _generate(prompt, callback, 0.0, "hook generation");
 }
 
@@ -333,7 +376,10 @@ void AIClient::generate_comments(ea_t ea, callback_t callback)
         callback(context["message"].get<std::string>());
         return;
     }
-    std::string prompt = ida_utils::format_prompt(GENERATE_COMMENTS_PROMPT, context);
+    const char* prompt_template = g_settings.prompt_profile == "pro"
+        ? GENERATE_COMMENTS_PROMPT_PRO
+        : GENERATE_COMMENTS_PROMPT;
+    std::string prompt = ida_utils::format_prompt(prompt_template, context);
     _generate(prompt, callback, 0.0, "comment generation");
 }
 
@@ -346,7 +392,10 @@ void AIClient::custom_query(ea_t ea, const std::string& question, callback_t cal
         return;
     }
     context["user_question"] = question;
-    std::string prompt = ida_utils::format_prompt(CUSTOM_QUERY_PROMPT, context);
+    const char* prompt_template = g_settings.prompt_profile == "pro"
+        ? CUSTOM_QUERY_PROMPT_PRO
+        : CUSTOM_QUERY_PROMPT;
+    std::string prompt = ida_utils::format_prompt(prompt_template, context);
     _generate(prompt, callback, _settings.temperature, "custom query");
 }
 
@@ -359,7 +408,10 @@ void AIClient::locate_global_pointer(ea_t ea, const std::string& target_name, ad
         return;
     }
     context["target_name"] = target_name;
-    std::string prompt = ida_utils::format_prompt(LOCATE_GLOBAL_POINTER_PROMPT, context);
+    const char* prompt_template = g_settings.prompt_profile == "pro"
+        ? LOCATE_GLOBAL_POINTER_PROMPT_PRO
+        : LOCATE_GLOBAL_POINTER_PROMPT;
+    std::string prompt = ida_utils::format_prompt(prompt_template, context);
 
     auto on_result = [callback, target_name](const std::string& result) {
         if (!result.empty() && result.find("Error:") == std::string::npos && result.find("None") == std::string::npos)
@@ -375,7 +427,10 @@ void AIClient::locate_global_pointer(ea_t ea, const std::string& target_name, ad
             }
             catch (const std::exception&)
             {
-                msg("AI Assistant: AI returned a non-address value for %s: %s\n", target_name.c_str(), result.c_str());
+                msg(localization::tr(
+                    "AI Assistant: AI returned a non-address value for %s: %s\n",
+                    "AI Assistant: AI вернул не адресное значение для %s: %s\n"),
+                    target_name.c_str(), result.c_str());
                 callback(BADADDR);
             }
         }
@@ -395,7 +450,10 @@ void AIClient::rename_all(ea_t ea, callback_t callback)
         callback(context["message"].get<std::string>());
         return;
     }
-    std::string prompt = ida_utils::format_prompt(RENAME_ALL_PROMPT, context);
+    const char* prompt_template = g_settings.prompt_profile == "pro"
+        ? RENAME_ALL_PROMPT_PRO
+        : RENAME_ALL_PROMPT;
+    std::string prompt = ida_utils::format_prompt(prompt_template, context);
     _generate(prompt, callback, 0.0, "renaming");
 }
 
@@ -431,7 +489,7 @@ std::string GeminiClient::_parse_api_response(const json& jres) const
 {
     if (jres.contains("error"))
     {
-        std::string error_msg = "Gemini API Error: ";
+        std::string error_msg = localization::tr("Gemini API Error: ", "Ошибка Gemini API: ");
         if (jres["error"].is_object() && jres["error"].contains("message"))
         {
             error_msg += jres["error"]["message"].get<std::string>();
@@ -440,8 +498,8 @@ std::string GeminiClient::_parse_api_response(const json& jres) const
         {
             error_msg += jres.dump(2);
         }
-        msg("AiDA: %s\n", error_msg.c_str());
-        return "Error: " + error_msg;
+        msg(localization::tr("AiDA: %s\n", "AiDA: %s\n"), error_msg.c_str());
+        return std::string(localization::tr("Error: ", "Ошибка: ")) + error_msg;
     }
 
     const auto candidates = jres.value("candidates", json::array());
@@ -449,11 +507,22 @@ std::string GeminiClient::_parse_api_response(const json& jres) const
     {
         if (jres.contains("promptFeedback") && jres["promptFeedback"].contains("blockReason")) {
             std::string reason = jres["promptFeedback"]["blockReason"].get<std::string>();
-            msg("AiDA: Gemini API blocked the prompt. Reason: %s\n", reason.c_str());
-            return "Error: Prompt was blocked by API for reason: " + reason;
+            msg(localization::tr(
+                "AiDA: Gemini API blocked the prompt. Reason: %s\n",
+                "AiDA: Gemini API заблокировал промпт. Причина: %s\n"),
+                reason.c_str());
+            return std::string(localization::tr(
+                "Error: Prompt was blocked by API for reason: ",
+                "Ошибка: Промпт был заблокирован API по причине: "))
+                + reason;
         }
-        msg("AiDA: Invalid Gemini API response: 'candidates' array is missing or empty.\nResponse body: %s\n", jres.dump(2).c_str());
-        return "Error: Received invalid 'candidates' array from API.";
+        msg(localization::tr(
+            "AiDA: Invalid Gemini API response: 'candidates' array is missing or empty.\nResponse body: %s\n",
+            "AiDA: Некорректный ответ Gemini API: массив 'candidates' отсутствует или пуст.\nТело ответа: %s\n"),
+            jres.dump(2).c_str());
+        return localization::tr(
+            "Error: Received invalid 'candidates' array from API.",
+            "Ошибка: Получен некорректный массив 'candidates' от API.");
     }
 
     const auto& first_candidate = candidates[0];
@@ -461,25 +530,43 @@ std::string GeminiClient::_parse_api_response(const json& jres) const
 
     if (finish_reason != "STOP")
     {
-        msg("AiDA: Gemini API returned a non-STOP finish reason: %s\n", finish_reason.c_str());
-        return "Error: API request finished unexpectedly. Reason: " + finish_reason;
+        msg(localization::tr(
+            "AiDA: Gemini API returned a non-STOP finish reason: %s\n",
+            "AiDA: Gemini API вернул причину завершения не STOP: %s\n"),
+            finish_reason.c_str());
+        return std::string(localization::tr(
+            "Error: API request finished unexpectedly. Reason: ",
+            "Ошибка: Запрос API завершился неожиданно. Причина: "))
+            + finish_reason;
     }
 
     const auto content = first_candidate.value("content", json::object());
     if (!content.is_object())
     {
-        msg("AiDA: Invalid Gemini API response: 'content' object is missing or invalid.\nResponse body: %s\n", jres.dump(2).c_str());
-        return "Error: Received invalid 'content' object from API.";
+        msg(localization::tr(
+            "AiDA: Invalid Gemini API response: 'content' object is missing or invalid.\nResponse body: %s\n",
+            "AiDA: Некорректный ответ Gemini API: объект 'content' отсутствует или неверен.\nТело ответа: %s\n"),
+            jres.dump(2).c_str());
+        return localization::tr(
+            "Error: Received invalid 'content' object from API.",
+            "Ошибка: Получен некорректный объект 'content' от API.");
     }
 
     const auto parts = content.value("parts", json::array());
     if (parts.empty() || !parts[0].is_object())
     {
-        msg("AiDA: Invalid Gemini API response: 'parts' array is missing, empty, or invalid.\nResponse body: %s\n", jres.dump(2).c_str());
-        return "Error: Received invalid 'parts' array from API.";
+        msg(localization::tr(
+            "AiDA: Invalid Gemini API response: 'parts' array is missing, empty, or invalid.\nResponse body: %s\n",
+            "AiDA: Некорректный ответ Gemini API: массив 'parts' отсутствует, пуст или неверен.\nТело ответа: %s\n"),
+            jres.dump(2).c_str());
+        return localization::tr(
+            "Error: Received invalid 'parts' array from API.",
+            "Ошибка: Получен некорректный массив 'parts' от API.");
     }
 
-    return parts[0].value("text", "Error: 'text' field not found in API response.");
+    return parts[0].value("text", localization::tr(
+        "Error: 'text' field not found in API response.",
+        "Ошибка: Поле 'text' не найдено в ответе API."));
 }
 
 OpenAIClient::OpenAIClient(const settings_t& settings) : AIClient(settings)
@@ -512,7 +599,7 @@ json OpenAIClient::_get_api_payload(const std::string& prompt_text, double tempe
     std::string model = _model_name;
     json payload = {        
         {"messages", {
-            {{"role", "system"}, {"content", BASE_PROMPT}},
+            {{"role", "system"}, {"content", get_base_prompt_text()}},
             {{"role", "user"}, {"content", prompt_text}}
         }}
     };
@@ -545,7 +632,7 @@ std::string OpenAIClient::_parse_api_response(const json& jres) const
 {
     if (jres.contains("error"))
     {
-        std::string error_msg = "OpenAI API Error: ";
+        std::string error_msg = localization::tr("OpenAI API Error: ", "Ошибка OpenAI API: ");
         if (jres["error"].is_object() && jres["error"].contains("message"))
         {
             error_msg += jres["error"]["message"].get<std::string>();
@@ -554,8 +641,8 @@ std::string OpenAIClient::_parse_api_response(const json& jres) const
         {
             error_msg += jres.dump(2);
         }
-        msg("AiDA: %s\n", error_msg.c_str());
-        return "Error: " + error_msg;
+        msg(localization::tr("AiDA: %s\n", "AiDA: %s\n"), error_msg.c_str());
+        return std::string(localization::tr("Error: ", "Ошибка: ")) + error_msg;
     }
 
     const auto choices = jres.value("choices", json::array());
@@ -563,11 +650,22 @@ std::string OpenAIClient::_parse_api_response(const json& jres) const
     {
         if (jres.contains("promptFeedback") && jres["promptFeedback"].contains("blockReason")) {
             std::string reason = jres["promptFeedback"]["blockReason"].get<std::string>();
-            msg("AiDA: OpenAI API blocked the prompt. Reason: %s\n", reason.c_str());
-            return "Error: Prompt was blocked by API for reason: " + reason;
+            msg(localization::tr(
+                "AiDA: OpenAI API blocked the prompt. Reason: %s\n",
+                "AiDA: OpenAI API заблокировал промпт. Причина: %s\n"),
+                reason.c_str());
+            return std::string(localization::tr(
+                "Error: Prompt was blocked by API for reason: ",
+                "Ошибка: Промпт был заблокирован API по причине: "))
+                + reason;
         }
-        msg("AiDA: Invalid OpenAI API response: 'choices' array is missing or empty.\nResponse body: %s\n", jres.dump(2).c_str());
-        return "Error: Received invalid 'choices' array from API.";
+        msg(localization::tr(
+            "AiDA: Invalid OpenAI API response: 'choices' array is missing or empty.\nResponse body: %s\n",
+            "AiDA: Некорректный ответ OpenAI API: массив 'choices' отсутствует или пуст.\nТело ответа: %s\n"),
+            jres.dump(2).c_str());
+        return localization::tr(
+            "Error: Received invalid 'choices' array from API.",
+            "Ошибка: Получен некорректный массив 'choices' от API.");
     }
 
     const auto& first_choice = choices[0];
@@ -575,18 +673,31 @@ std::string OpenAIClient::_parse_api_response(const json& jres) const
 
     if (finish_reason != "stop" && finish_reason != "STOP")
     {
-        msg("AiDA: OpenAI API returned a non-STOP finish reason: %s\n", finish_reason.c_str());
-        return "Error: API request finished unexpectedly. Reason: " + finish_reason;
+        msg(localization::tr(
+            "AiDA: OpenAI API returned a non-STOP finish reason: %s\n",
+            "AiDA: OpenAI API вернул причину завершения не STOP: %s\n"),
+            finish_reason.c_str());
+        return std::string(localization::tr(
+            "Error: API request finished unexpectedly. Reason: ",
+            "Ошибка: Запрос API завершился неожиданно. Причина: "))
+            + finish_reason;
     }
 
     const auto message = first_choice.value("message", json::object());
     if (!message.is_object())
     {
-        msg("AiDA: Invalid OpenAI API response: 'message' object is missing or invalid.\nResponse body: %s\n", jres.dump(2).c_str());
-        return "Error: Received invalid 'message' object from API.";
+        msg(localization::tr(
+            "AiDA: Invalid OpenAI API response: 'message' object is missing or invalid.\nResponse body: %s\n",
+            "AiDA: Некорректный ответ OpenAI API: объект 'message' отсутствует или неверен.\nТело ответа: %s\n"),
+            jres.dump(2).c_str());
+        return localization::tr(
+            "Error: Received invalid 'message' object from API.",
+            "Ошибка: Получен некорректный объект 'message' от API.");
     }
 
-    return message.value("content", "Error: 'content' field not found in API response.");
+    return message.value("content", localization::tr(
+        "Error: 'content' field not found in API response.",
+        "Ошибка: Поле 'content' не найдено в ответе API."));
 }
 
 OpenRouterClient::OpenRouterClient(const settings_t& settings) : OpenAIClient(settings)
@@ -637,7 +748,7 @@ json OllamaClient::_get_api_payload(const std::string& prompt_text, double tempe
     return {
         {"model", _model_name},
         {"messages", {
-            {{"role", "system"}, {"content", BASE_PROMPT}},
+            {{"role", "system"}, {"content", get_base_prompt_text()}},
             {{"role", "user"}, {"content", prompt_text}}
         }},
         {"stream", false},
@@ -649,7 +760,7 @@ std::string OllamaClient::_parse_api_response(const json& jres) const
 {
     if (jres.contains("error"))
     {
-        std::string error_msg = "Ollama API Error: ";
+        std::string error_msg = localization::tr("Ollama API Error: ", "Ошибка Ollama API: ");
         if (jres["error"].is_string())
         {
             error_msg += jres["error"].get<std::string>();
@@ -658,22 +769,29 @@ std::string OllamaClient::_parse_api_response(const json& jres) const
         {
             error_msg += jres["error"].dump(2);
         }
-        msg("AiDA: %s\n", error_msg.c_str());
-        return "Error: " + error_msg;
+        msg(localization::tr("AiDA: %s\n", "AiDA: %s\n"), error_msg.c_str());
+        return std::string(localization::tr("Error: ", "Ошибка: ")) + error_msg;
     }
 
     if (jres.contains("message") && jres["message"].is_object())
     {
         const auto message = jres["message"];
         if (message.contains("content"))
-            return message.value("content", "Error: 'content' field not found in API response.");
+            return message.value("content", localization::tr(
+                "Error: 'content' field not found in API response.",
+                "Ошибка: Поле 'content' не найдено в ответе API."));
     }
 
     if (jres.contains("response") && jres["response"].is_string())
         return jres["response"].get<std::string>();
 
-    msg("AiDA: Invalid Ollama API response.\nResponse body: %s\n", jres.dump(2).c_str());
-    return "Error: Received invalid response from Ollama API.";
+    msg(localization::tr(
+        "AiDA: Invalid Ollama API response.\nResponse body: %s\n",
+        "AiDA: Некорректный ответ Ollama API.\nТело ответа: %s\n"),
+        jres.dump(2).c_str());
+    return localization::tr(
+        "Error: Received invalid response from Ollama API.",
+        "Ошибка: Получен некорректный ответ от Ollama API.");
 }
 
 AnthropicClient::AnthropicClient(const settings_t& settings) : AIClient(settings)
@@ -742,7 +860,7 @@ json AnthropicClient::_get_api_payload(const std::string& prompt_text, double te
 
     json payload = {
         {"model", model_id},
-        {"system", BASE_PROMPT},
+        {"system", get_base_prompt_text()},
         {"messages", {{{"role", "user"}, {"content", prompt_text}}}},
         {"max_tokens", 4096}
     };
@@ -768,7 +886,7 @@ std::string AnthropicClient::_parse_api_response(const json& jres) const
 {
     if (jres.contains("error"))
     {
-        std::string error_msg = "Anthropic API Error: ";
+        std::string error_msg = localization::tr("Anthropic API Error: ", "Ошибка Anthropic API: ");
         if (jres["error"].is_object() && jres["error"].contains("message"))
         {
             error_msg += jres["error"]["message"].get<std::string>();
@@ -777,8 +895,8 @@ std::string AnthropicClient::_parse_api_response(const json& jres) const
         {
             error_msg += jres.dump(2);
         }
-        msg("AiDA: %s\n", error_msg.c_str());
-        return "Error: " + error_msg;
+        msg(localization::tr("AiDA: %s\n", "AiDA: %s\n"), error_msg.c_str());
+        return std::string(localization::tr("Error: ", "Ошибка: ")) + error_msg;
     }
 
     const auto content = jres.value("content", json::array());
@@ -786,18 +904,35 @@ std::string AnthropicClient::_parse_api_response(const json& jres) const
     {
         if (jres.contains("promptFeedback") && jres["promptFeedback"].contains("blockReason")) {
             std::string reason = jres["promptFeedback"]["blockReason"].get<std::string>();
-            msg("AiDA: Anthropic API blocked the prompt. Reason: %s\n", reason.c_str());
-            return "Error: Prompt was blocked by API for reason: " + reason;
+            msg(localization::tr(
+                "AiDA: Anthropic API blocked the prompt. Reason: %s\n",
+                "AiDA: Anthropic API заблокировал промпт. Причина: %s\n"),
+                reason.c_str());
+            return std::string(localization::tr(
+                "Error: Prompt was blocked by API for reason: ",
+                "Ошибка: Промпт был заблокирован API по причине: "))
+                + reason;
         }
-        msg("AiDA: Invalid Anthropic API response: 'content' array is missing or empty.\nResponse body: %s\n", jres.dump(2).c_str());
-        return "Error: Received invalid 'content' array from API.";
+        msg(localization::tr(
+            "AiDA: Invalid Anthropic API response: 'content' array is missing or empty.\nResponse body: %s\n",
+            "AiDA: Некорректный ответ Anthropic API: массив 'content' отсутствует или пуст.\nТело ответа: %s\n"),
+            jres.dump(2).c_str());
+        return localization::tr(
+            "Error: Received invalid 'content' array from API.",
+            "Ошибка: Получен некорректный массив 'content' от API.");
     }
 
     std::string stop_reason = jres.value("stop_reason", "UNKNOWN");
     if (stop_reason != "end_turn" && stop_reason != "max_tokens")
     {
-        msg("AiDA: Anthropic API returned a non-success stop reason: %s\n", stop_reason.c_str());
-        return "Error: API request finished unexpectedly. Reason: " + stop_reason;
+        msg(localization::tr(
+            "AiDA: Anthropic API returned a non-success stop reason: %s\n",
+            "AiDA: Anthropic API вернул неуспешную причину завершения: %s\n"),
+            stop_reason.c_str());
+        return std::string(localization::tr(
+            "Error: API request finished unexpectedly. Reason: ",
+            "Ошибка: Запрос API завершился неожиданно. Причина: "))
+            + stop_reason;
     }
 
     std::string result_text;
@@ -811,8 +946,13 @@ std::string AnthropicClient::_parse_api_response(const json& jres) const
 
     if (result_text.empty())
     {
-        msg("AiDA: No text content found in Anthropic API response.\nResponse body: %s\n", jres.dump(2).c_str());
-        return "Error: No text content found in API response.";
+        msg(localization::tr(
+            "AiDA: No text content found in Anthropic API response.\nResponse body: %s\n",
+            "AiDA: В ответе Anthropic API не найден текст.\nТело ответа: %s\n"),
+            jres.dump(2).c_str());
+        return localization::tr(
+            "Error: No text content found in API response.",
+            "Ошибка: В ответе API не найден текст.");
     }
 
     return result_text;
@@ -836,7 +976,7 @@ json CopilotClient::_get_api_payload(const std::string& prompt_text, double temp
     return {
         {"model", _model_name},
         {"messages", {
-            {{"role", "system"}, {"content", BASE_PROMPT}},
+            {{"role", "system"}, {"content", get_base_prompt_text()}},
             {{"role", "user"}, {"content", prompt_text}}
         }},
         {"temperature", temperature}
@@ -846,7 +986,7 @@ std::string CopilotClient::_parse_api_response(const json& jres) const
 {
     if (jres.contains("error"))
     {
-        std::string error_msg = "Copilot API Error: ";
+        std::string error_msg = localization::tr("Copilot API Error: ", "Ошибка Copilot API: ");
         if (jres["error"].is_object() && jres["error"].contains("message"))
         {
             error_msg += jres["error"]["message"].get<std::string>();
@@ -855,8 +995,8 @@ std::string CopilotClient::_parse_api_response(const json& jres) const
         {
             error_msg += jres.dump(2);
         }
-        msg("AiDA: %s\n", error_msg.c_str());
-        return "Error: " + error_msg;
+        msg(localization::tr("AiDA: %s\n", "AiDA: %s\n"), error_msg.c_str());
+        return std::string(localization::tr("Error: ", "Ошибка: ")) + error_msg;
     }
 
     const auto choices = jres.value("choices", json::array());
@@ -864,11 +1004,22 @@ std::string CopilotClient::_parse_api_response(const json& jres) const
     {
         if (jres.contains("promptFeedback") && jres["promptFeedback"].contains("blockReason")) {
             std::string reason = jres["promptFeedback"]["blockReason"].get<std::string>();
-            msg("AiDA: Copilot API blocked the prompt. Reason: %s\n", reason.c_str());
-            return "Error: Prompt was blocked by API for reason: " + reason;
+            msg(localization::tr(
+                "AiDA: Copilot API blocked the prompt. Reason: %s\n",
+                "AiDA: Copilot API заблокировал промпт. Причина: %s\n"),
+                reason.c_str());
+            return std::string(localization::tr(
+                "Error: Prompt was blocked by API for reason: ",
+                "Ошибка: Промпт был заблокирован API по причине: "))
+                + reason;
         }
-        msg("AiDA: Invalid Copilot API response: 'choices' array is missing or empty.\nResponse body: %s\n", jres.dump(2).c_str());
-        return "Error: Received invalid 'choices' array from API.";
+        msg(localization::tr(
+            "AiDA: Invalid Copilot API response: 'choices' array is missing or empty.\nResponse body: %s\n",
+            "AiDA: Некорректный ответ Copilot API: массив 'choices' отсутствует или пуст.\nТело ответа: %s\n"),
+            jres.dump(2).c_str());
+        return localization::tr(
+            "Error: Received invalid 'choices' array from API.",
+            "Ошибка: Получен некорректный массив 'choices' от API.");
     }
 
     const auto& first_choice = choices[0];
@@ -876,25 +1027,41 @@ std::string CopilotClient::_parse_api_response(const json& jres) const
 
     if (finish_reason != "stop" && finish_reason != "STOP")
     {
-        msg("AiDA: Copilot API returned a non-STOP finish reason: %s\n", finish_reason.c_str());
-        return "Error: API request finished unexpectedly. Reason: " + finish_reason;
+        msg(localization::tr(
+            "AiDA: Copilot API returned a non-STOP finish reason: %s\n",
+            "AiDA: Copilot API вернул причину завершения не STOP: %s\n"),
+            finish_reason.c_str());
+        return std::string(localization::tr(
+            "Error: API request finished unexpectedly. Reason: ",
+            "Ошибка: Запрос API завершился неожиданно. Причина: "))
+            + finish_reason;
     }
 
     const auto message = first_choice.value("message", json::object());
     if (!message.is_object())
     {
-        msg("AiDA: Invalid Copilot API response: 'message' object is missing or invalid.\nResponse body: %s\n", jres.dump(2).c_str());
-        return "Error: Received invalid 'message' object from API.";
+        msg(localization::tr(
+            "AiDA: Invalid Copilot API response: 'message' object is missing or invalid.\nResponse body: %s\n",
+            "AiDA: Некорректный ответ Copilot API: объект 'message' отсутствует или неверен.\nТело ответа: %s\n"),
+            jres.dump(2).c_str());
+        return localization::tr(
+            "Error: Received invalid 'message' object from API.",
+            "Ошибка: Получен некорректный объект 'message' от API.");
     }
 
-    return message.value("content", "Error: 'content' field not found in API response.");
+    return message.value("content", localization::tr(
+        "Error: 'content' field not found in API response.",
+        "Ошибка: Поле 'content' не найдено в ответе API."));
 }
 
 std::unique_ptr<AIClient> get_ai_client(const settings_t& settings)
 {
     qstring provider = ida_utils::qstring_tolower(settings.api_provider.c_str());
 
-    msg("AI Assistant: Initializing AI provider: %s\n", provider.c_str());
+    msg(localization::tr(
+        "AI Assistant: Initializing AI provider: %s\n",
+        "AI Assistant: Инициализация провайдера AI: %s\n"),
+        provider.c_str());
 
     if (provider == "gemini")
     {
@@ -922,7 +1089,10 @@ std::unique_ptr<AIClient> get_ai_client(const settings_t& settings)
     }
     else
     {
-        warning("AI Assistant: Unknown AI provider '%s' in settings. No AI features will be available.", provider.c_str());
+        warning(localization::tr(
+            "AI Assistant: Unknown AI provider '%s' in settings. No AI features will be available.",
+            "AI Assistant: Неизвестный провайдер AI '%s' в настройках. Функции AI будут недоступны."),
+            provider.c_str());
         return nullptr;
     }
 }

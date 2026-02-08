@@ -190,7 +190,10 @@ namespace ida_utils
             }
             catch (const vd_failure_t&)
             {
-                msg("AiDA: Decompilation failed at 0x%llx, falling back to assembly.\n", ea);
+                msg(localization::tr(
+                    "AiDA: Decompilation failed at 0x%llx, falling back to assembly.\n",
+                    "AiDA: Декомпиляция для 0x%llx не удалась, используется ассемблер.\n"),
+                    ea);
             }
         }
 
@@ -542,6 +545,7 @@ namespace ida_utils
             {"ok", true},
             {"code", code_pair.first},
             {"language", code_pair.second},
+            {"response_language", g_settings.response_language},
             {"func_ea_hex", ea_hex_str.c_str()},
             {"xrefs_to", get_code_xrefs_to(ea, g_settings)},
             {"xrefs_from", get_code_xrefs_from(ea, g_settings)},
@@ -716,8 +720,10 @@ namespace ida_utils
             }
             else
             {
-                warning("AiDA: AI response did not contain a C++ struct definition.\n"
-                        "Full response:\n%s", cpp_code.c_str());
+                warning(localization::tr(
+                    "AiDA: AI response did not contain a C++ struct definition.\nFull response:\n%s",
+                    "AiDA: Ответ AI не содержит определения C++ структуры.\nПолный ответ:\n%s"),
+                    cpp_code.c_str());
                 return;
             }
         }
@@ -728,8 +734,13 @@ namespace ida_utils
         std::smatch match_name;
         if (!std::regex_search(struct_code, match_name, std::regex("struct\\s+([a-zA-Z_][a-zA-Z0-9_]*)")))
         {
-            warning("AiDA: Could not find a valid struct name in the AI-generated code.");
-            msg("--- Invalid Code Snippet ---\n%s\n----------------------------\n", struct_code.c_str());
+            warning(localization::tr(
+                "AiDA: Could not find a valid struct name in the AI-generated code.",
+                "AiDA: Не удалось найти корректное имя структуры в коде от AI."));
+            msg(localization::tr(
+                "--- Invalid Code Snippet ---\n%s\n----------------------------\n",
+                "--- Некорректный фрагмент кода ---\n%s\n----------------------------\n"),
+                struct_code.c_str());
             return;
         }
         std::string original_struct_name = match_name[1].str();
@@ -739,16 +750,30 @@ namespace ida_utils
         if (get_type_ordinal(idati, final_struct_name.c_str()) != 0)
         {
             qstring question;
-            question.sprnt("A struct named '%s' already exists. What would you like to do?", final_struct_name.c_str());
+            question.sprnt(localization::tr(
+                "A struct named '%s' already exists. What would you like to do?",
+                "Структура с именем '%s' уже существует. Что вы хотите сделать?"),
+                final_struct_name.c_str());
             
-            int choice = ask_buttons("~O~verwrite", "~R~ename", "~C~ancel", ASKBTN_CANCEL, question.c_str());
+            int choice = ask_buttons(
+                localization::tr("~O~verwrite", "~П~ерезаписать"),
+                localization::tr("~R~ename", "~П~ереименовать"),
+                localization::tr("~C~ancel", "~О~тмена"),
+                ASKBTN_CANCEL,
+                question.c_str());
 
             if (choice == ASKBTN_YES)
             {
-                msg("AiDA: Struct '%s' already exists, overwriting.\n", final_struct_name.c_str());
+                msg(localization::tr(
+                    "AiDA: Struct '%s' already exists, overwriting.\n",
+                    "AiDA: Структура '%s' уже существует, выполняется перезапись.\n"),
+                    final_struct_name.c_str());
                 if (!del_named_type(idati, final_struct_name.c_str(), NTF_TYPE))
                 {
-                    warning("AiDA: Failed to delete existing struct '%s'. Aborting overwrite.", final_struct_name.c_str());
+                    warning(localization::tr(
+                        "AiDA: Failed to delete existing struct '%s'. Aborting overwrite.",
+                        "AiDA: Не удалось удалить существующую структуру '%s'. Перезапись отменена."),
+                        final_struct_name.c_str());
                     return;
                 }
             }
@@ -761,11 +786,16 @@ namespace ida_utils
                     temp_qstr.sprnt("%s_%d", original_struct_name.c_str(), counter++);
                     final_struct_name = temp_qstr.c_str();
                 } while (get_type_ordinal(idati, final_struct_name.c_str()) != 0);
-                msg("AiDA: Renaming to '%s' to avoid conflict.\n", final_struct_name.c_str());
+                msg(localization::tr(
+                    "AiDA: Renaming to '%s' to avoid conflict.\n",
+                    "AiDA: Переименование в '%s' для предотвращения конфликта.\n"),
+                    final_struct_name.c_str());
             }
             else
             {
-                msg("AiDA: Struct creation cancelled by user.\n");
+                msg(localization::tr(
+                    "AiDA: Struct creation cancelled by user.\n",
+                    "AiDA: Создание структуры отменено пользователем.\n"));
                 return;
             }
         }
@@ -775,15 +805,23 @@ namespace ida_utils
             struct_code = std::regex_replace(struct_code, std::regex("struct\\s+" + original_struct_name), "struct " + final_struct_name);
         }
 
-        msg("--- AiDA: Attempting to parse the following C++ struct ---\n%s\n--------------------------------------------------------\n", struct_code.c_str());
+        msg(localization::tr(
+            "--- AiDA: Attempting to parse the following C++ struct ---\n%s\n--------------------------------------------------------\n",
+            "--- AiDA: Попытка разобрать следующую C++ структуру ---\n%s\n--------------------------------------------------------\n"),
+            struct_code.c_str());
 
         if (parse_decls(idati, struct_code.c_str(), msg, HTI_DCL) != 0)
         {
-            warning("AiDA: Failed to parse the C++ struct. See the Output window for details and the code that was attempted.");
+            warning(localization::tr(
+                "AiDA: Failed to parse the C++ struct. See the Output window for details and the code that was attempted.",
+                "AiDA: Не удалось разобрать C++ структуру. См. окно Output для деталей и исходного кода."));
             return;
         }
 
-        msg("AiDA: Struct '%s' created/updated successfully.\n", final_struct_name.c_str());
+        msg(localization::tr(
+            "AiDA: Struct '%s' created/updated successfully.\n",
+            "AiDA: Структура '%s' успешно создана/обновлена.\n"),
+            final_struct_name.c_str());
 
         uint32 ordinal = get_type_ordinal(idati, final_struct_name.c_str());
         if (ordinal != 0)
@@ -794,13 +832,18 @@ namespace ida_utils
         func_t* pfn = get_func(ea);
         if (pfn == nullptr)
         {
-            msg("AiDA: No function at 0x%llx to apply type to.\n", ea);
+            msg(localization::tr(
+                "AiDA: No function at 0x%llx to apply type to.\n",
+                "AiDA: Нет функции по адресу 0x%llx для применения типа.\n"),
+                ea);
             return;
         }
 
         if (!init_hexrays_plugin())
         {
-            msg("AiDA: Hex-Rays decompiler not available. Cannot automatically apply type to function arguments.\n");
+            msg(localization::tr(
+                "AiDA: Hex-Rays decompiler not available. Cannot automatically apply type to function arguments.\n",
+                "AiDA: Декомпилятор Hex-Rays недоступен. Нельзя автоматически применить тип к аргументам функции.\n"));
             return;
         }
 
@@ -809,7 +852,10 @@ namespace ida_utils
             cfuncptr_t cfunc = decompile(pfn);
             if (cfunc == nullptr)
             {
-                warning("AiDA: Could not decompile function at 0x%llx to apply type.", ea);
+                warning(localization::tr(
+                    "AiDA: Could not decompile function at 0x%llx to apply type.",
+                    "AiDA: Не удалось декомпилировать функцию по адресу 0x%llx для применения типа."),
+                    ea);
                 return;
             }
 
@@ -853,27 +899,40 @@ namespace ida_utils
 
                     if (modify_user_lvar_info(pfn->start_ea, MLI_TYPE, lsi))
                     {
-                        msg("AiDA: Applied type '%s' to argument '%s'.\n", new_type_str.c_str(), target_lvar->name.c_str());
+                        msg(localization::tr(
+                            "AiDA: Applied type '%s' to argument '%s'.\n",
+                            "AiDA: Применён тип '%s' к аргументу '%s'.\n"),
+                            new_type_str.c_str(), target_lvar->name.c_str());
                         mark_cfunc_dirty(pfn->start_ea, true);
                     }
                     else
                     {
-                        warning("AiDA: Failed to apply type '%s' to lvar '%s'.", new_type_str.c_str(), target_lvar->name.c_str());
+                        warning(localization::tr(
+                            "AiDA: Failed to apply type '%s' to lvar '%s'.",
+                            "AiDA: Не удалось применить тип '%s' к локальной переменной '%s'."),
+                            new_type_str.c_str(), target_lvar->name.c_str());
                     }
                 }
             }
             else
             {
-                msg("AiDA: Could not find a suitable argument to apply the new struct type to.\n");
+                msg(localization::tr(
+                    "AiDA: Could not find a suitable argument to apply the new struct type to.\n",
+                    "AiDA: Не удалось найти подходящий аргумент для применения нового типа структуры.\n"));
             }
         }
         catch (const vd_failure_t&)
         {
-            warning("AiDA: Decompilation failed, cannot automatically apply type.");
+            warning(localization::tr(
+                "AiDA: Decompilation failed, cannot automatically apply type.",
+                "AiDA: Декомпиляция не удалась, невозможно автоматически применить тип."));
         }
         catch (const std::exception& e)
         {
-            warning("AiDA: An unexpected error occurred during type application: %s", e.what());
+            warning(localization::tr(
+                "AiDA: An unexpected error occurred during type application: %s",
+                "AiDA: Произошла непредвиденная ошибка при применении типа: %s"),
+                e.what());
         }
     }
     bool is_word_char(char c)
@@ -885,7 +944,8 @@ namespace ida_utils
     {
         const std::vector<ea_t>& funcs;
         func_chooser_t(const std::vector<ea_t>& f)
-           : chooser_t(CH_MODAL, 1, WIDTHS, HEADER, "Select a function that references this item"), funcs(f) {}
+           : chooser_t(CH_MODAL, 1, WIDTHS, localization::is_russian() ? HEADER_RU : HEADER_EN,
+               localization::tr("Select a function that references this item", "Выберите функцию, которая ссылается на этот элемент")), funcs(f) {}
 
         const void* get_obj_id(size_t* len) const override
         {
@@ -906,11 +966,13 @@ namespace ida_utils
         }
 
         static const int WIDTHS[];
-        static const char* const HEADER[];
+        static const char* const HEADER_EN[];
+        static const char* const HEADER_RU[];
     };
 
     const int func_chooser_t::WIDTHS[] = { 30 };
-    const char* const func_chooser_t::HEADER[] = { "Function" };
+    const char* const func_chooser_t::HEADER_EN[] = { "Function" };
+    const char* const func_chooser_t::HEADER_RU[] = { "Функция" };
 
     func_t* get_function_for_item(ea_t ea)
     {
@@ -924,7 +986,9 @@ namespace ida_utils
         ea_t item_ea = get_item_head(ea);
         if (!get_name(&name, item_ea))
         {
-            warning("AiDA: Please place the cursor inside a function or on a named data item.");
+            warning(localization::tr(
+                "AiDA: Please place the cursor inside a function or on a named data item.",
+                "AiDA: Поместите курсор внутри функции или на именованном элементе данных."));
             return nullptr;
         }
 
@@ -944,7 +1008,10 @@ namespace ida_utils
 
         if (func_eas.empty())
         {
-            warning("AiDA: No code references found to '%s'. Action requires a function context.", name.c_str());
+            warning(localization::tr(
+                "AiDA: No code references found to '%s'. Action requires a function context.",
+                "AiDA: Не найдены ссылки на '%s'. Действие требует контекста функции."),
+                name.c_str());
             return nullptr;
         }
 
@@ -1026,7 +1093,7 @@ namespace ida_utils
 #ifdef _WIN32
         if (!OpenClipboard(nullptr))
         {
-            warning("AiDA: Could not open clipboard.");
+            warning(localization::tr("AiDA: Could not open clipboard.", "AiDA: Не удалось открыть буфер обмена."));
             return false;
         }
 
@@ -1037,14 +1104,16 @@ namespace ida_utils
 
         if (!EmptyClipboard())
         {
-            warning("AiDA: Could not empty clipboard.");
+            warning(localization::tr("AiDA: Could not empty clipboard.", "AiDA: Не удалось очистить буфер обмена."));
             return false;
         }
 
         qwstring wtext;
         if (!utf8_utf16(&wtext, text.c_str()))
         {
-            warning("AiDA: Failed to convert text to UTF-16 for clipboard.");
+            warning(localization::tr(
+                "AiDA: Failed to convert text to UTF-16 for clipboard.",
+                "AiDA: Не удалось конвертировать текст в UTF-16 для буфера обмена."));
             return false;
         }
 
@@ -1052,14 +1121,18 @@ namespace ida_utils
         HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, (wlen + 1) * sizeof(wchar16_t));
         if (hg == nullptr)
         {
-            warning("AiDA: GlobalAlloc failed for clipboard.");
+            warning(localization::tr(
+                "AiDA: GlobalAlloc failed for clipboard.",
+                "AiDA: GlobalAlloc не удалось для буфера обмена."));
             return false;
         }
 
         wchar16_t* locked_mem = (wchar16_t*)GlobalLock(hg);
         if (locked_mem == nullptr)
         {
-            warning("AiDA: GlobalLock failed for clipboard.");
+            warning(localization::tr(
+                "AiDA: GlobalLock failed for clipboard.",
+                "AiDA: GlobalLock не удалось для буфера обмена."));
             GlobalFree(hg);
             return false;
         }
@@ -1069,7 +1142,9 @@ namespace ida_utils
 
         if (SetClipboardData(CF_UNICODETEXT, hg) == nullptr)
         {
-            warning("AiDA: SetClipboardData failed.");
+            warning(localization::tr(
+                "AiDA: SetClipboardData failed.",
+                "AiDA: SetClipboardData завершилась с ошибкой."));
             GlobalFree(hg);
             return false;
         }
@@ -1089,10 +1164,14 @@ namespace ida_utils
                 return true; 
             }
         }
-        warning("AiDA: Could not find 'wl-copy' or 'xclip' to set clipboard.");
+        warning(localization::tr(
+            "AiDA: Could not find 'wl-copy' or 'xclip' to set clipboard.",
+            "AiDA: Не удалось найти 'wl-copy' или 'xclip' для установки буфера обмена."));
         return false;
 #else
-        warning("AiDA: Clipboard copy not implemented for this platform.");
+        warning(localization::tr(
+            "AiDA: Clipboard copy not implemented for this platform.",
+            "AiDA: Копирование в буфер обмена не реализовано для этой платформы."));
         return false;
 #endif
     }
@@ -1101,31 +1180,34 @@ namespace ida_utils
     {
         std::stringstream ss;
 
-        ss << "Function: " << context.value("func_ea_hex", "N/A") << "\n";
-        ss << "Prototype: " << context.value("func_prototype", "// N/A") << "\n\n";
+        ss << localization::tr("Function: ", "Функция: ") << context.value("func_ea_hex", "N/A") << "\n";
+        ss << localization::tr("Prototype: ", "Прототип: ") << context.value("func_prototype", "// N/A") << "\n\n";
 
-        ss << "--- Decompiled " << context.value("language", "Code") << " ---\n";
-        ss << context.value("code", "// No code available.") << "\n\n";
+        ss << localization::tr("--- Decompiled ", "--- Декомпилированный ") << context.value("language", "Code") << localization::tr(" ---\n", " ---\n");
+        ss << context.value("code", localization::tr("// No code available.", "// Нет доступного кода.")) << "\n\n";
 
-        ss << "--- Local Variables ---\n";
-        ss << context.value("local_vars", "// No local variables found.") << "\n\n";
+        ss << localization::tr("--- Local Variables ---\n", "--- Локальные переменные ---\n");
+        ss << context.value("local_vars", localization::tr("// No local variables found.", "// Локальные переменные не найдены.")) << "\n\n";
 
-        ss << "--- String Literals Referenced ---\n";
-        ss << context.value("string_xrefs", "// No string literals referenced.") << "\n\n";
+        ss << localization::tr("--- String Literals Referenced ---\n", "--- Ссылки на строковые литералы ---\n");
+        ss << context.value("string_xrefs", localization::tr("// No string literals referenced.", "// Строковые литералы не найдены.")) << "\n\n";
 
-        ss << "--- Callers (Functions that call this one) ---\n";
-        ss << context.value("xrefs_to", "// No callers found.") << "\n\n";
+        ss << localization::tr("--- Callers (Functions that call this one) ---\n",
+            "--- Вызывающие (функции, которые вызывают эту) ---\n");
+        ss << context.value("xrefs_to", localization::tr("// No callers found.", "// Вызывающие не найдены.")) << "\n\n";
 
-        ss << "--- Callees (Functions this one calls) ---\n";
-        ss << context.value("xrefs_from", "// No callees found.") << "\n\n";
+        ss << localization::tr("--- Callees (Functions this one calls) ---\n",
+            "--- Вызываемые (функции, которые вызывает эта) ---\n");
+        ss << context.value("xrefs_from", localization::tr("// No callees found.", "// Вызываемые не найдены.")) << "\n\n";
 
         if (context.contains("struct_context")) {
-            ss << "--- Struct Member Usage & Data Cross-References ---\n";
-            ss << context.value("struct_context", "// No struct context available.") << "\n\n";
+            ss << localization::tr("--- Struct Member Usage & Data Cross-References ---\n",
+                "--- Использование членов структуры и ссылки на данные ---\n");
+            ss << context.value("struct_context", localization::tr("// No struct context available.", "// Контекст структуры недоступен.")) << "\n\n";
         }
 
-        ss << "--- Decompiler Warnings ---\n";
-        ss << context.value("decompiler_warnings", "// No decompiler warnings.") << "\n";
+        ss << localization::tr("--- Decompiler Warnings ---\n", "--- Предупреждения декомпилятора ---\n");
+        ss << context.value("decompiler_warnings", localization::tr("// No decompiler warnings.", "// Нет предупреждений декомпилятора.")) << "\n";
 
         return ss.str();
     }
@@ -1134,21 +1216,29 @@ namespace ida_utils
     {
         if (!init_hexrays_plugin())
         {
-            warning("AiDA: Renaming requires the Hex-Rays decompiler.");
+            warning(localization::tr(
+                "AiDA: Renaming requires the Hex-Rays decompiler.",
+                "AiDA: Переименование требует декомпилятора Hex-Rays."));
             return "";
         }
 
         func_t* pfn = get_func(func_ea);
         if (pfn == nullptr)
         {
-            warning("AiDA: Function at 0x%llx not found for renaming.", func_ea);
+            warning(localization::tr(
+                "AiDA: Function at 0x%llx not found for renaming.",
+                "AiDA: Функция по адресу 0x%llx не найдена для переименования."),
+                func_ea);
             return "";
         }
 
         cfuncptr_t cfunc = decompile(pfn);
         if (cfunc == nullptr)
         {
-            warning("AiDA: Decompilation failed for function at 0x%llx.", func_ea);
+            warning(localization::tr(
+                "AiDA: Decompilation failed for function at 0x%llx.",
+                "AiDA: Декомпиляция не удалась для функции по адресу 0x%llx."),
+                func_ea);
             return "";
         }
 
@@ -1250,7 +1340,10 @@ namespace ida_utils
                         }
                         else
                         {
-                            msg("AiDA: Failed to rename local variable '%s' to '%s'.\n", original_name.c_str(), new_name.c_str());
+                            msg(localization::tr(
+                                "AiDA: Failed to rename local variable '%s' to '%s'.\n",
+                                "AiDA: Не удалось переименовать локальную переменную '%s' в '%s'.\n"),
+                                original_name.c_str(), new_name.c_str());
                         }
                         break;
                     }
@@ -1290,7 +1383,10 @@ namespace ida_utils
                         }
                         else
                         {
-                            msg("AiDA: Failed to rename '%s' to '%s'.\n", original_name.c_str(), new_name.c_str());
+                            msg(localization::tr(
+                                "AiDA: Failed to rename '%s' to '%s'.\n",
+                                "AiDA: Не удалось переименовать '%s' в '%s'.\n"),
+                                original_name.c_str(), new_name.c_str());
                         }
                     }
                 }
@@ -1310,7 +1406,10 @@ namespace ida_utils
                     }
                     else
                     {
-                        msg("AiDA: Failed to rename segment '%s' to '%s'.\n", original_name.c_str(), new_name.c_str());
+                        msg(localization::tr(
+                            "AiDA: Failed to rename segment '%s' to '%s'.\n",
+                            "AiDA: Не удалось переименовать сегмент '%s' в '%s'.\n"),
+                            original_name.c_str(), new_name.c_str());
                     }
                 }
             }
@@ -1334,7 +1433,10 @@ namespace ida_utils
                         }
                         else
                         {
-                            msg("AiDA: Failed to rename type '%s' to '%s'.\n", original_name.c_str(), new_name.c_str());
+                            msg(localization::tr(
+                                "AiDA: Failed to rename type '%s' to '%s'.\n",
+                                "AiDA: Не удалось переименовать тип '%s' в '%s'.\n"),
+                                original_name.c_str(), new_name.c_str());
                         }
                     }
                 }
@@ -1343,7 +1445,10 @@ namespace ida_utils
 
         if (renamed_count > 0)
         {
-            msg("AiDA: Applied %d renames.\n", renamed_count);
+            msg(localization::tr(
+                "AiDA: Applied %d renames.\n",
+                "AiDA: Применено %d переименований.\n"),
+                renamed_count);
         }
 
         return summary;
