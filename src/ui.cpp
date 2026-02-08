@@ -48,9 +48,11 @@ static std::vector<std::string> fetch_openrouter_models_via_api(const qstring& a
         if (!res || res->status != 200)
         {
             if (res)
-                msg("AiDA: Failed to fetch OpenRouter models. HTTP %d.\n", res->status);
+                msg(localization::tr("AiDA: Failed to fetch OpenRouter models. HTTP %d.\n",
+                    "AiDA: Не удалось получить модели OpenRouter. HTTP %d.\n"), res->status);
             else
-                msg("AiDA: Failed to fetch OpenRouter models. HTTP request error.\n");
+                msg(localization::tr("AiDA: Failed to fetch OpenRouter models. HTTP request error.\n",
+                    "AiDA: Не удалось получить модели OpenRouter. Ошибка HTTP-запроса.\n"));
             return models;
         }
 
@@ -84,7 +86,8 @@ static std::vector<std::string> fetch_openrouter_models_via_api(const qstring& a
     }
     catch (const std::exception& e)
     {
-        warning("AI Assistant: Exception while fetching OpenRouter models: %s", e.what());
+        warning(localization::tr("AI Assistant: Exception while fetching OpenRouter models: %s",
+            "AI Assistant: Исключение при получении моделей OpenRouter: %s"), e.what());
     }
     return models;
 }
@@ -106,9 +109,11 @@ static std::vector<std::string> fetch_ollama_models_via_api(const qstring& base_
         if (!res || res->status != 200)
         {
             if (res)
-                msg("AiDA: Failed to fetch Ollama models. HTTP %d.\n", res->status);
+                msg(localization::tr("AiDA: Failed to fetch Ollama models. HTTP %d.\n",
+                    "AiDA: Не удалось получить модели Ollama. HTTP %d.\n"), res->status);
             else
-                msg("AiDA: Failed to fetch Ollama models. HTTP request error.\n");
+                msg(localization::tr("AiDA: Failed to fetch Ollama models. HTTP request error.\n",
+                    "AiDA: Не удалось получить модели Ollama. Ошибка HTTP-запроса.\n"));
             return models;
         }
 
@@ -128,7 +133,8 @@ static std::vector<std::string> fetch_ollama_models_via_api(const qstring& base_
     }
     catch (const std::exception& e)
     {
-        warning("AI Assistant: Exception while fetching Ollama models: %s", e.what());
+        warning(localization::tr("AI Assistant: Exception while fetching Ollama models: %s",
+            "AI Assistant: Исключение при получении моделей Ollama: %s"), e.what());
     }
 
     return models;
@@ -137,19 +143,21 @@ static std::vector<std::string> fetch_ollama_models_via_api(const qstring& base_
 // this stupid form almost gave me an aneurysm
 void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
 {
-    static const char form_str[] =
+    static const char form_str_en[] =
         "STARTITEM 0\n"
         "BUTTON YES Ok\n"
         "BUTTON CANCEL Cancel\n"
         "AI Assistant Settings\n\n"
         // --- general tab ---
         "<#API Provider Configuration#Provider:b1:0:20::>\n\n"
-        "<#Analysis Parameters#XRef Context Count:D2:10:10::>\n"
-        "<XRef Analysis Depth:D3:10:10::>\n"
-        "<Code Snippet Lines:D4:10:10::>\n"
-        "<Bulk Processing Delay (sec):q5:10:10::>\n"
-        "<Max Prompt Tokens:D6:10:10::>\n"
-        "<Model Temperature:q7:10:10::>\n"
+        "<Response Language:b2:0:20::>\n"
+        "<Prompt Profile:b3:0:30::>\n"
+        "<#Analysis Parameters#XRef Context Count:D4:10:10::>\n"
+        "<XRef Analysis Depth:D5:10:10::>\n"
+        "<Code Snippet Lines:D6:10:10::>\n"
+        "<Bulk Processing Delay (sec):q7:10:10::>\n"
+        "<Max Prompt Tokens:D8:10:10::>\n"
+        "<Model Temperature:q9:10:10::>\n"
         "<=:General>100>\n" // tab ctrl is 100
 
         // --- gemini ---
@@ -185,10 +193,76 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         "<Model Name:b42:0:40::>\n"
         "<=:Copilot>100>\n";
 
+    static const char form_str_ru[] =
+        "STARTITEM 0\n"
+        "BUTTON YES Ok\n"
+        "BUTTON CANCEL Cancel\n"
+        "Настройки AI Assistant\n\n"
+        // --- general tab ---
+        "<#Настройка провайдера API#Провайдер:b1:0:20::>\n\n"
+        "<Язык ответа:b2:0:20::>\n"
+        "<Профиль промптов:b3:0:30::>\n"
+        "<#Параметры анализа#Кол-во контекста XRef:D4:10:10::>\n"
+        "<Глубина анализа XRef:D5:10:10::>\n"
+        "<Строк кода в сниппете:D6:10:10::>\n"
+        "<Задержка пакетной обработки (сек):q7:10:10::>\n"
+        "<Максимум токенов промпта:D8:10:10::>\n"
+        "<Температура модели:q9:10:10::>\n"
+        "<=:Общие>100>\n"
+
+        // --- gemini ---
+        "<API ключ:q11:256:64::>\n"
+        "<Имя модели:b12:0:40::>\n"
+        "<Base URL (опционально):q13:64:64::>\n"
+        "<=:Gemini>100>\n"
+
+        // --- openai ---
+        "<API ключ:q21:256:64::>\n"
+        "<Имя модели:b22:0:40::>\n"
+        "<Base URL (опционально):q23:64:64::>\n"
+        "<=:OpenAI>100>\n"
+
+        // --- OpenRouter ---
+        "<API ключ:q25:256:80::>\n"
+        "<Имя модели:b26:0:40::>\n"
+        "<=:OpenRouter>100>\n"
+
+        // --- Ollama ---
+        "<Имя модели:b27:0:40::>\n"
+        "<Base URL:q28:64:64::>\n"
+        "<=:Ollama>100>\n"
+
+        // --- Anthropic Tab ---
+        "<API ключ:q31:256:64::>\n"
+        "<Имя модели:b32:0:40::>\n"
+        "<Base URL (опционально):q33:64:64::>\n"
+        "<=:Anthropic>100>\n"
+
+        // --- copilot ---
+        "<Адрес прокси:q41:64:64::>\n"
+        "<Имя модели:b42:0:40::>\n"
+        "<=:Copilot>100>\n";
+
+    const char* form_str = localization::is_russian() ? form_str_ru : form_str_en;
+
     static const char* const providers_list_items[] = { "Gemini", "OpenAI", "OpenRouter", "Ollama", "Anthropic", "Copilot" };
     qstrvec_t providers_qstrvec;
     for (const auto& p : providers_list_items)
         providers_qstrvec.push_back(p);
+
+    static const char* const language_list_items[] = { "English", "Russian" };
+    const char* const language_label_items[] = {
+        localization::tr("English", "Английский"),
+        localization::tr("Russian", "Русский")
+    };
+    qstrvec_t language_qstrvec;
+    for (const auto& lang : language_label_items)
+        language_qstrvec.push_back(lang);
+
+    static const char* const prompt_profile_items[] = { "standard", "pro" };
+    qstrvec_t prompt_profile_qstrvec;
+    prompt_profile_qstrvec.push_back(localization::tr("Standard (Game Hacking)", "Стандартный (Game Hacking)"));
+    prompt_profile_qstrvec.push_back(localization::tr("Pro (Reverse Engineering)", "ПРО (Реверс-инжиниринг)"));
 
     qstring provider_setting = g_settings.api_provider.c_str();
     provider_setting = ida_utils::qstring_tolower(provider_setting.c_str());
@@ -198,6 +272,16 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
     else if (provider_setting == "ollama") provider_idx = 3;
     else if (provider_setting == "anthropic") provider_idx = 4;
     else if (provider_setting == "copilot") provider_idx = 5;
+
+    qstring language_setting = g_settings.response_language.c_str();
+    int language_idx = 0;
+    if (language_setting == "Russian")
+        language_idx = 1;
+
+    qstring prompt_profile_setting = g_settings.prompt_profile.c_str();
+    int prompt_profile_idx = 0;
+    if (prompt_profile_setting == "pro")
+        prompt_profile_idx = 1;
 
     auto find_model_index = [](const std::vector<std::string>& models, const std::string& name) -> int {
         auto it = std::find(models.begin(), models.end(), name);
@@ -260,8 +344,10 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
     int selected_tab = 0;
 
     if (ask_form(form_str,
-        // general tab (8 args)
+        // general tab (10 args)
         &providers_qstrvec, &provider_idx,
+        &language_qstrvec, &language_idx,
+        &prompt_profile_qstrvec, &prompt_profile_idx,
         &xref_count, &xref_depth, &snippet_lines,
         &bulk_delay_str, &max_tokens, &temp_str,
         // gemini tab (4 args)
@@ -281,6 +367,8 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
     ) > 0)
     {
         g_settings.api_provider = providers_list_items[provider_idx];
+        g_settings.response_language = language_list_items[language_idx];
+        g_settings.prompt_profile = prompt_profile_items[prompt_profile_idx];
 
         g_settings.gemini_api_key = gemini_key.c_str();
         g_settings.gemini_base_url = gemini_base_url.c_str();
@@ -315,16 +403,19 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         g_settings.max_prompt_tokens = static_cast<int>(max_tokens);
 
         try { g_settings.bulk_processing_delay = std::stod(bulk_delay_str.c_str()); }
-        catch (...) { warning("AI Assistant: Invalid value for bulk processing delay."); }
+        catch (...) { warning(localization::tr("AI Assistant: Invalid value for bulk processing delay.",
+            "AI Assistant: Некорректное значение задержки пакетной обработки.")); }
 
         try { g_settings.temperature = std::stod(temp_str.c_str()); }
-        catch (...) { warning("AI Assistant: Invalid value for temperature."); }
+        catch (...) { warning(localization::tr("AI Assistant: Invalid value for temperature.",
+            "AI Assistant: Некорректное значение температуры.")); }
 
         g_settings.save();
 
         if (plugin_instance)
         {
-            msg("AI Assistant: Settings updated. Re-initializing AI client...\n");
+            msg(localization::tr("AI Assistant: Settings updated. Re-initializing AI client...\n",
+                "AI Assistant: Настройки обновлены. Повторная инициализация AI клиента...\n"));
             plugin_instance->reinit_ai_client();
         }
     }
@@ -340,7 +431,9 @@ void show_text_in_viewer(const char* title, const std::string& text_content)
 {
     if (text_content.empty() || text_content.find_first_not_of(" \t\n\r") == std::string::npos)
     {
-        warning("AI returned an empty or whitespace-only response. Nothing to display.");
+        warning(localization::tr(
+            "AI returned an empty or whitespace-only response. Nothing to display.",
+            "AI вернул пустой или состоящий только из пробелов ответ. Нечего отображать."));
         return;
     }
 
@@ -368,7 +461,7 @@ void show_text_in_viewer(const char* title, const std::string& text_content)
     TWidget* viewer = create_custom_viewer(title, &s1, &s2, &s1, nullptr, lines_ptr, nullptr, nullptr);
     if (viewer == nullptr)
     {
-        warning("Could not create viewer '%s'.", title);
+        warning(localization::tr("Could not create viewer '%s'.", "Не удалось создать окно '%s'."), title);
         delete lines_ptr;
         return;
     }
@@ -418,7 +511,7 @@ static int idaapi finish_populating_widget_popup(TWidget* widget, TPopupMenu* po
         { "ai_assistant:settings",     "" },
     };
 
-    const char* menu_root = "AI Assistant/";
+    const char* menu_root = localization::tr("AI Assistant/", "AI Ассистент/");
     for (const auto& item : menu_items)
     {
         qstring full_path;

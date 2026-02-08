@@ -147,6 +147,8 @@ static void to_json(nlohmann::json& j, const settings_t& s)
         {"anthropic_base_url", s.anthropic_base_url},
         {"copilot_proxy_address", s.copilot_proxy_address},
         {"copilot_model_name", s.copilot_model_name},
+        {"response_language", s.response_language},
+        {"prompt_profile", s.prompt_profile},
         {"xref_context_count", s.xref_context_count},
         {"xref_analysis_depth", s.xref_analysis_depth},
         {"xref_code_snippet_lines", s.xref_code_snippet_lines},
@@ -183,6 +185,8 @@ static void from_json(const nlohmann::json& j, settings_t& s)
 
     s.copilot_proxy_address = j.value("copilot_proxy_address", d.copilot_proxy_address);
     s.copilot_model_name = j.value("copilot_model_name", d.copilot_model_name);
+    s.response_language = j.value("response_language", d.response_language);
+    s.prompt_profile = j.value("prompt_profile", d.prompt_profile);
 
     s.xref_context_count = j.value("xref_context_count", d.xref_context_count);
     s.xref_analysis_depth = j.value("xref_analysis_depth", d.xref_analysis_depth);
@@ -214,7 +218,10 @@ static bool save_settings_to_file(const settings_t& settings, const qstring& pat
         FILE* fp = qfopen(path.c_str(), "wb");
         if (fp == nullptr)
         {
-            warning("AiDA: Failed to open settings file for writing: %s", path.c_str());
+            warning(localization::tr(
+                "AiDA: Failed to open settings file for writing: %s",
+                "AiDA: Не удалось открыть файл настроек для записи: %s"),
+                path.c_str());
             return false;
         }
 
@@ -223,16 +230,22 @@ static bool save_settings_to_file(const settings_t& settings, const qstring& pat
         size_t written = qfwrite(fp, json_str.c_str(), json_str.length());
         if (written != json_str.length())
         {
-            warning("AiDA: Failed to write all settings to %s", path.c_str());
+            warning(localization::tr(
+                "AiDA: Failed to write all settings to %s",
+                "AiDA: Не удалось записать все настройки в %s"),
+                path.c_str());
             return false;
         }
 
-        msg("AI Assistant: Settings saved to %s\n", path.c_str());
+        msg(localization::tr("AI Assistant: Settings saved to %s\n", "AI Assistant: Настройки сохранены в %s\n"), path.c_str());
         return true;
     }
     catch (const std::exception& e)
     {
-        warning("AI Assistant: Failed to serialize settings: %s", e.what());
+        warning(localization::tr(
+            "AI Assistant: Failed to serialize settings: %s",
+            "AI Assistant: Не удалось сериализовать настройки: %s"),
+            e.what());
         return false;
     }
 }
@@ -256,7 +269,10 @@ static bool load_settings_from_file(settings_t& settings, const qstring& path)
     json_data.resize(file_size);
     if (qfread(fp, json_data.begin(), file_size) != file_size)
     {
-        warning("AiDA: Failed to read settings file: %s", path.c_str());
+        warning(localization::tr(
+            "AiDA: Failed to read settings file: %s",
+            "AiDA: Не удалось прочитать файл настроек: %s"),
+            path.c_str());
         return false;
     }
 
@@ -274,6 +290,8 @@ static bool load_settings_from_file(settings_t& settings, const qstring& path)
         req("ollama_model_name"); req("ollama_base_url");
         req("anthropic_api_key"); req("anthropic_model_name"); req("anthropic_base_url");
         req("copilot_proxy_address"); req("copilot_model_name");
+        req("response_language");
+        req("prompt_profile");
         req("xref_context_count"); req("xref_analysis_depth"); req("xref_code_snippet_lines");
         req("bulk_processing_delay"); req("max_prompt_tokens");
         req("max_root_func_scan_count"); req("max_root_func_candidates");
@@ -290,7 +308,10 @@ static bool load_settings_from_file(settings_t& settings, const qstring& path)
     }
     catch (const std::exception& e)
     {
-        warning("AI Assistant: Could not parse config file %s: %s", path.c_str(), e.what());
+        warning(localization::tr(
+            "AI Assistant: Could not parse config file %s: %s",
+            "AI Assistant: Не удалось разобрать конфигурационный файл %s: %s"),
+            path.c_str(), e.what());
         return false;
     }
 }
@@ -313,6 +334,8 @@ settings_t::settings_t() :
     anthropic_base_url(""),
     copilot_proxy_address("http://127.0.0.1:4141"),
     copilot_model_name("gpt-4.1"),
+    response_language("Russian"),
+    prompt_profile("standard"),
     xref_context_count(5),
     xref_analysis_depth(3),
     xref_code_snippet_lines(30),
@@ -361,21 +384,28 @@ void settings_t::load(aida_plugin_t* plugin_instance)
 
     if (has_env_keys)
     {
-        msg("AI Assistant: Loaded one or more API keys from environment variables.\n");
+        msg(localization::tr(
+            "AI Assistant: Loaded one or more API keys from environment variables.\n",
+            "AI Assistant: Загружены один или несколько API ключей из переменных окружения.\n"));
     }
 
     bool config_exists_and_valid = load_from_file();
 
     if (!config_exists_and_valid || api_provider.empty())
     {
-        info("AI Assistant: Welcome! Please configure the plugin to begin.");
+        info(localization::tr(
+            "AI Assistant: Welcome! Please configure the plugin to begin.",
+            "AI Assistant: Добро пожаловать! Пожалуйста, настройте плагин для начала работы."));
         SettingsForm::show_and_apply(plugin_instance);
         return;
     }
 
     if (config_exists_and_valid)
     {
-        msg("AI Assistant: Loaded settings from %s\n", get_config_file().c_str());
+        msg(localization::tr(
+            "AI Assistant: Loaded settings from %s\n",
+            "AI Assistant: Настройки загружены из %s\n"),
+            get_config_file().c_str());
     }
 
     if (!api_provider.empty() && get_active_api_key().empty())
@@ -407,12 +437,16 @@ void settings_t::prompt_for_api_key()
 
     if (provider == "copilot")
     {
-        warning("AI Assistant: Copilot provider is selected, but the proxy address is not configured. Please set it in the settings dialog.");
+        warning(localization::tr(
+            "AI Assistant: Copilot provider is selected, but the proxy address is not configured. Please set it in the settings dialog.",
+            "AI Assistant: Выбран провайдер Copilot, но адрес прокси не настроен. Укажите его в настройках."));
         return;
     }
     if (provider == "ollama")
     {
-        warning("AI Assistant: Ollama provider is selected, but the base URL or model is not configured. Please set it in the settings dialog.");
+        warning(localization::tr(
+            "AI Assistant: Ollama provider is selected, but the base URL or model is not configured. Please set it in the settings dialog.",
+            "AI Assistant: Выбран провайдер Ollama, но Base URL или модель не настроены. Укажите их в настройках."));
         return;
     }
 
@@ -420,11 +454,17 @@ void settings_t::prompt_for_api_key()
     if (!provider_name.empty())
         provider_name[0] = qtoupper(provider_name[0]);
 
-    warning("AI Assistant: %s API key not found.", provider_name.c_str());
+    warning(localization::tr(
+        "AI Assistant: %s API key not found.",
+        "AI Assistant: API ключ %s не найден."),
+        provider_name.c_str());
 
     qstring key;
     qstring question;
-    question.sprnt("Please enter your %s API key to continue:", provider_name.c_str());
+    question.sprnt(localization::tr(
+        "Please enter your %s API key to continue:",
+        "Пожалуйста, введите ваш API ключ %s для продолжения:"),
+        provider_name.c_str());
     if (ask_str(&key, HIST_SRCH, question.c_str()))
     {
         if (provider == "gemini") gemini_api_key = key.c_str();
@@ -435,6 +475,9 @@ void settings_t::prompt_for_api_key()
     }
     else
     {
-        warning("AI Assistant will be disabled until an API key is provided for %s.", provider_name.c_str());
+        warning(localization::tr(
+            "AI Assistant will be disabled until an API key is provided for %s.",
+            "AI Assistant будет отключён, пока не будет указан API ключ для %s."),
+            provider_name.c_str());
     }
 }

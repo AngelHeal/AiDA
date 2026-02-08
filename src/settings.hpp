@@ -31,6 +31,8 @@ public:
 
     std::string copilot_proxy_address;
     std::string copilot_model_name;
+    std::string response_language;
+    std::string prompt_profile;
 
     int xref_context_count;
     int xref_analysis_depth;
