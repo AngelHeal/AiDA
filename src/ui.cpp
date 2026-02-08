@@ -89,6 +89,51 @@ static std::vector<std::string> fetch_openrouter_models_via_api(const qstring& a
     return models;
 }
 
+static std::vector<std::string> fetch_ollama_models_via_api(const qstring& base_url)
+{
+    std::vector<std::string> models;
+    std::string resolved_base_url = base_url.c_str();
+    if (resolved_base_url.empty())
+        resolved_base_url = "http://127.0.0.1:11434";
+
+    try
+    {
+        httplib::Client cli(resolved_base_url.c_str());
+        cli.set_read_timeout(20);
+        cli.set_connection_timeout(10);
+
+        auto res = cli.Get("/api/tags");
+        if (!res || res->status != 200)
+        {
+            if (res)
+                msg("AiDA: Failed to fetch Ollama models. HTTP %d.\n", res->status);
+            else
+                msg("AiDA: Failed to fetch Ollama models. HTTP request error.\n");
+            return models;
+        }
+
+        auto j = nlohmann::json::parse(res->body);
+        if (!j.contains("models") || !j["models"].is_array())
+            return models;
+
+        for (const auto& m : j["models"])
+        {
+            if (!m.contains("name") || !m["name"].is_string())
+                continue;
+            models.push_back(m["name"].get<std::string>());
+        }
+
+        std::sort(models.begin(), models.end());
+        models.erase(std::unique(models.begin(), models.end()), models.end());
+    }
+    catch (const std::exception& e)
+    {
+        warning("AI Assistant: Exception while fetching Ollama models: %s", e.what());
+    }
+
+    return models;
+}
+
 // this stupid form almost gave me an aneurysm
 void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
 {
@@ -178,9 +223,12 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
     for (const auto& m : openrouter_models_vec) openrouter_models_qsv.push_back(m.c_str());
     int openrouter_model_idx = find_model_index(openrouter_models_vec, g_settings.openrouter_model_name);
 
+    std::vector<std::string> ollama_models_vec = fetch_ollama_models_via_api(g_settings.ollama_base_url.c_str());
+    if (ollama_models_vec.empty())
+        ollama_models_vec = settings_t::ollama_models;
     qstrvec_t ollama_models_qsv;
-    for (const auto& m : settings_t::ollama_models) ollama_models_qsv.push_back(m.c_str());
-    int ollama_model_idx = find_model_index(settings_t::ollama_models, g_settings.ollama_model_name);
+    for (const auto& m : ollama_models_vec) ollama_models_qsv.push_back(m.c_str());
+    int ollama_model_idx = find_model_index(ollama_models_vec, g_settings.ollama_model_name);
 
     qstrvec_t anthropic_models_qsv;
     for (const auto& m : settings_t::anthropic_models) anthropic_models_qsv.push_back(m.c_str());
@@ -248,8 +296,8 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         if (openrouter_model_idx < openrouter_models_vec.size())
             g_settings.openrouter_model_name = openrouter_models_vec[openrouter_model_idx];
 
-        if (ollama_model_idx < settings_t::ollama_models.size())
-            g_settings.ollama_model_name = settings_t::ollama_models[ollama_model_idx];
+        if (ollama_model_idx < ollama_models_vec.size())
+            g_settings.ollama_model_name = ollama_models_vec[ollama_model_idx];
         g_settings.ollama_base_url = ollama_base_url.c_str();
 
         g_settings.anthropic_api_key = anthropic_key.c_str();
