@@ -334,7 +334,7 @@ settings_t::settings_t() :
     anthropic_base_url(""),
     copilot_proxy_address("http://127.0.0.1:4141"),
     copilot_model_name("gpt-4.1"),
-    response_language("Russian"),
+    response_language("English"),
     prompt_profile("standard"),
     xref_context_count(5),
     xref_analysis_depth(3),
