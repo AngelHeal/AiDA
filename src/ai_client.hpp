@@ -125,6 +125,19 @@ protected:
     httplib::Headers _get_api_headers() const override;
 };
 
+class OllamaClient : public AIClient
+{
+public:
+    OllamaClient(const settings_t& settings);
+    bool is_available() const override;
+protected:
+    std::string _get_api_host() const override;
+    std::string _get_api_path(const std::string& model_name) const override;
+    httplib::Headers _get_api_headers() const override;
+    nlohmann::json _get_api_payload(const std::string& prompt_text, double temperature) const override;
+    std::string _parse_api_response(const nlohmann::json& response) const override;
+};
+
 class AnthropicClient : public AIClient
 {
 public:

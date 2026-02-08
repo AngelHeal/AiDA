@@ -124,6 +124,11 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         "<Model Name:b26:0:40::>\n"
         "<=:OpenRouter>100>\n"
 
+        // --- Ollama ---
+        "<Model Name:b27:0:40::>\n"
+        "<Base URL:q28:64:64::>\n"
+        "<=:Ollama>100>\n"
+
         // --- Anthropic Tab ---
         "<API Key:q31:256:64::>\n"
         "<Model Name:b32:0:40::>\n"
@@ -135,7 +140,7 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         "<Model Name:b42:0:40::>\n"
         "<=:Copilot>100>\n";
 
-    static const char* const providers_list_items[] = { "Gemini", "OpenAI", "OpenRouter", "Anthropic", "Copilot" };
+    static const char* const providers_list_items[] = { "Gemini", "OpenAI", "OpenRouter", "Ollama", "Anthropic", "Copilot" };
     qstrvec_t providers_qstrvec;
     for (const auto& p : providers_list_items)
         providers_qstrvec.push_back(p);
@@ -145,8 +150,9 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
     int provider_idx = 0;
     if (provider_setting == "openai") provider_idx = 1;
     else if (provider_setting == "openrouter") provider_idx = 2;
-    else if (provider_setting == "anthropic") provider_idx = 3;
-    else if (provider_setting == "copilot") provider_idx = 4;
+    else if (provider_setting == "ollama") provider_idx = 3;
+    else if (provider_setting == "anthropic") provider_idx = 4;
+    else if (provider_setting == "copilot") provider_idx = 5;
 
     auto find_model_index = [](const std::vector<std::string>& models, const std::string& name) -> int {
         auto it = std::find(models.begin(), models.end(), name);
@@ -172,6 +178,10 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
     for (const auto& m : openrouter_models_vec) openrouter_models_qsv.push_back(m.c_str());
     int openrouter_model_idx = find_model_index(openrouter_models_vec, g_settings.openrouter_model_name);
 
+    qstrvec_t ollama_models_qsv;
+    for (const auto& m : settings_t::ollama_models) ollama_models_qsv.push_back(m.c_str());
+    int ollama_model_idx = find_model_index(settings_t::ollama_models, g_settings.ollama_model_name);
+
     qstrvec_t anthropic_models_qsv;
     for (const auto& m : settings_t::anthropic_models) anthropic_models_qsv.push_back(m.c_str());
     int anthropic_model_idx = find_model_index(settings_t::anthropic_models, g_settings.anthropic_model_name);
@@ -185,6 +195,7 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
     qstring openai_key = g_settings.openai_api_key.c_str();
     qstring openai_base_url = g_settings.openai_base_url.c_str();
     qstring openrouter_key = g_settings.openrouter_api_key.c_str();
+    qstring ollama_base_url = g_settings.ollama_base_url.c_str();
     qstring anthropic_key = g_settings.anthropic_api_key.c_str();
     qstring anthropic_base_url = g_settings.anthropic_base_url.c_str();
     qstring copilot_proxy_addr = g_settings.copilot_proxy_address.c_str();
@@ -211,6 +222,8 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         &openai_key, &openai_models_qsv, &openai_model_idx, &openai_base_url,
         // openrouter tab (3 args)
         &openrouter_key, &openrouter_models_qsv, &openrouter_model_idx,
+        // ollama tab (2 args)
+        &ollama_models_qsv, &ollama_model_idx, &ollama_base_url,
         // anthropic tab (4 args)
         &anthropic_key, &anthropic_models_qsv, &anthropic_model_idx, &anthropic_base_url,
         // copilot tab (3 args)
@@ -234,6 +247,10 @@ void SettingsForm::show_and_apply(aida_plugin_t* plugin_instance)
         g_settings.openrouter_api_key = openrouter_key.c_str();
         if (openrouter_model_idx < openrouter_models_vec.size())
             g_settings.openrouter_model_name = openrouter_models_vec[openrouter_model_idx];
+
+        if (ollama_model_idx < settings_t::ollama_models.size())
+            g_settings.ollama_model_name = settings_t::ollama_models[ollama_model_idx];
+        g_settings.ollama_base_url = ollama_base_url.c_str();
 
         g_settings.anthropic_api_key = anthropic_key.c_str();
         g_settings.anthropic_base_url = anthropic_base_url.c_str();
