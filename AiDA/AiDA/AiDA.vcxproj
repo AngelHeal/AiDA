@@ -23,6 +23,7 @@
     <ClCompile Include="..\..\src\aida.cpp" />
     <ClCompile Include="..\..\src\ai_client.cpp" />
     <ClCompile Include="..\..\src\ida_utils.cpp" />
+    <ClCompile Include="..\..\src\localization.cpp" />
     <ClCompile Include="..\..\src\settings.cpp" />
     <ClCompile Include="..\..\src\ui.cpp" />
   </ItemGroup>
@@ -32,6 +33,7 @@
     <ClInclude Include="..\..\src\aida_pro.hpp" />
     <ClInclude Include="..\..\src\ai_client.hpp" />
     <ClInclude Include="..\..\src\ida_utils.hpp" />
+    <ClInclude Include="..\..\src\localization.hpp" />
     <ClInclude Include="..\..\src\prompts.hpp" />
     <ClInclude Include="..\..\src\settings.hpp" />
     <ClInclude Include="..\..\src\ui.hpp" />
