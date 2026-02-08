@@ -22,6 +22,9 @@ public:
     std::string openrouter_api_key;
     std::string openrouter_model_name;
 
+    std::string ollama_model_name;
+    std::string ollama_base_url;
+
     std::string anthropic_api_key;
     std::string anthropic_model_name;
     std::string anthropic_base_url;
@@ -42,6 +45,7 @@ public:
     static const std::vector<std::string> gemini_models;
     static const std::vector<std::string> openai_models;
     static const std::vector<std::string> openrouter_models;
+    static const std::vector<std::string> ollama_models;
     static const std::vector<std::string> anthropic_models;
     static const std::vector<std::string> copilot_models;
 

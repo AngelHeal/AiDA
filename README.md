@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/github/stars/sigwl/AiDA" alt="Stars">
   <img src="https://img.shields.io/github/forks/sigwl/AiDA" alt="Forks">
 </p>
-<p>AiDA is a high-performance, AI-powered assistant plugin for IDA Pro (9.0+) written in C++ to provide maximum speed and stability. It's designed to accelerate the reverse engineering of modern C++ games by leveraging large language models (Google Gemini, OpenAI, and Anthropic) directly within the IDA environment.</p>
+<p>AiDA is a high-performance, AI-powered assistant plugin for IDA Pro (9.0+) written in C++ to provide maximum speed and stability. It's designed to accelerate the reverse engineering of modern C++ games by leveraging large language models (Google Gemini, OpenAI, Anthropic, OpenRouter, GitHub Copilot, and local Ollama) directly within the IDA environment.</p>
 <p><a href="#features">Features</a> &bull; 
   <a href="#installation">Installation</a> &bull; 
   <a href="#configuration">Configuration</a> &bull; 
@@ -22,7 +22,7 @@
 *   **Struct Generation:** Reconstructs C++ structs from function disassembly, automatically handling padding and member offsets.
 *   **Hook Generation:** Creates C++ MinHook snippets for easy function interception.
 *   **Custom Queries:** Ask any question about a function and get a direct, technical answer.
-*   **Multi-Provider Support:** Works with Google Gemini, OpenAI (ChatGPT), and Anthropic (Claude) models.
+*   **Multi-Provider Support:** Works with Google Gemini, OpenAI (ChatGPT), Anthropic (Claude), OpenRouter, GitHub Copilot, and local Ollama models.
 *   **Native Performance:** Written in C++ for a seamless and fast user experience with no Python dependency.
 
 ## Installation
@@ -59,7 +59,7 @@ Once the prerequisites are met:
 
 1.  The first time you run IDA Pro with the plugin, it will prompt you to open the settings dialog.
 2.  You can also access it at any time via the right-click context menu in a disassembly or pseudocode view: `AI Assistant > Settings...`.
-3.  In the settings dialog, select your desired AI Provider and enter your API key. The key will be saved locally in your user directory (`%APPDATA%\Hex-Rays\IDA Pro\ai_assistant.cfg`) and is never transmitted anywhere except to the AI provider's API.
+3.  In the settings dialog, select your desired AI Provider and enter your API key (if required). The key will be saved locally in your user directory (`%APPDATA%\Hex-Rays\IDA Pro\ai_assistant.cfg`) and is never transmitted anywhere except to the AI provider's API.
 
 ### GitHub Copilot Configuration (Special Instructions)
 
@@ -82,8 +82,14 @@ You must have the `copilot-api` server running in the background. This server ha
 3.  Ensure the **Proxy Address** in the `Copilot` tab is correct. The default is `http://127.0.0.1:4141`, which should work if you ran the command above without changes.
 4.  Select your desired Copilot model (e.g., `claude-sonnet-4`).
 
+### Ollama Configuration (Local Models)
+1.  Install and run [Ollama](https://ollama.com/) with your preferred model (e.g., `ollama run llama3.1`).
+2.  In IDA, open the AiDA settings (`AI Assistant > Settings...`).
+3.  Set the **Provider** to `Ollama`.
+4.  In the `Ollama` tab, select your model and confirm the **Base URL** (default: `http://127.0.0.1:11434`).
+
 ### API Provider Configuration
-*   **Provider:** Choose the AI service you want to use (Gemini, OpenAI, or Anthropic).
+*   **Provider:** Choose the AI service you want to use (Gemini, OpenAI, OpenRouter, Ollama, Anthropic, or Copilot).
 *   **API Key:** Your personal key for the selected provider. This is required for authentication.
 *   **Model Name:** Specify which model to use. More powerful models (like Gemini 2.5 Pro or Claude 4 Opus) provide higher-quality analysis but cost more per use. Lighter models (like Gemini 1.5 Flash or GPT-4o mini) are faster and cheaper.
 

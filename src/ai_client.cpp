@@ -613,6 +613,69 @@ httplib::Headers OpenRouterClient::_get_api_headers() const
     };
 }
 
+OllamaClient::OllamaClient(const settings_t& settings) : AIClient(settings)
+{
+    _model_name = _settings.ollama_model_name;
+}
+
+bool OllamaClient::is_available() const
+{
+    return !_model_name.empty();
+}
+
+std::string OllamaClient::_get_api_host() const
+{
+    if (!_settings.ollama_base_url.empty())
+        return _settings.ollama_base_url;
+    return "http://127.0.0.1:11434";
+}
+
+std::string OllamaClient::_get_api_path(const std::string&) const { return "/api/chat"; }
+httplib::Headers OllamaClient::_get_api_headers() const { return {{"Content-Type", "application/json"}}; }
+json OllamaClient::_get_api_payload(const std::string& prompt_text, double temperature) const
+{
+    return {
+        {"model", _model_name},
+        {"messages", {
+            {{"role", "system"}, {"content", BASE_PROMPT}},
+            {{"role", "user"}, {"content", prompt_text}}
+        }},
+        {"stream", false},
+        {"options", {{"temperature", temperature}}}
+    };
+}
+
+std::string OllamaClient::_parse_api_response(const json& jres) const
+{
+    if (jres.contains("error"))
+    {
+        std::string error_msg = "Ollama API Error: ";
+        if (jres["error"].is_string())
+        {
+            error_msg += jres["error"].get<std::string>();
+        }
+        else
+        {
+            error_msg += jres["error"].dump(2);
+        }
+        msg("AiDA: %s\n", error_msg.c_str());
+        return "Error: " + error_msg;
+    }
+
+    if (jres.contains("message") && jres["message"].is_object())
+    {
+        const auto message = jres["message"];
+        if (message.contains("content"))
+            return message.value("content", "Error: 'content' field not found in API response.");
+    }
+
+    if (jres.contains("response") && jres["response"].is_string())
+        return jres["response"].get<std::string>();
+
+    msg("AiDA: Invalid Ollama API response.\nResponse body: %s\n", jres.dump(2).c_str());
+    return "Error: Received invalid response from Ollama API.";
+}
+
 AnthropicClient::AnthropicClient(const settings_t& settings) : AIClient(settings)
 {
     _model_name = _settings.anthropic_model_name;
@@ -844,6 +907,10 @@ std::unique_ptr<AIClient> get_ai_client(const settings_t& settings)
     else if (provider == "openrouter")
     {
         return std::make_unique<OpenRouterClient>(settings);
+    }
+    else if (provider == "ollama")
+    {
+        return std::make_unique<OllamaClient>(settings);
     }
     else if (provider == "anthropic")
     {

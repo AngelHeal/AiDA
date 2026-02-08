@@ -69,6 +69,15 @@ const std::vector<std::string> settings_t::openrouter_models = {
   
 };
 
+const std::vector<std::string> settings_t::ollama_models = {
+    "llama3.1",
+    "llama3.2",
+    "qwen2.5",
+    "mistral",
+    "mixtral",
+    "gemma2",
+};
+
 const std::vector<std::string> settings_t::anthropic_models = {
   "claude-opus-4-5 (High Effort)",
   "claude-opus-4-5 (Medium Effort)",
@@ -131,6 +140,8 @@ static void to_json(nlohmann::json& j, const settings_t& s)
         {"openai_base_url", s.openai_base_url},
         {"openrouter_api_key", s.openrouter_api_key},
         {"openrouter_model_name", s.openrouter_model_name},
+        {"ollama_model_name", s.ollama_model_name},
+        {"ollama_base_url", s.ollama_base_url},
         {"anthropic_api_key", s.anthropic_api_key},
         {"anthropic_model_name", s.anthropic_model_name},
         {"anthropic_base_url", s.anthropic_base_url},
@@ -162,6 +173,9 @@ static void from_json(const nlohmann::json& j, settings_t& s)
 
     s.openrouter_api_key = get_trimmed_json_string(j, "openrouter_api_key", d.openrouter_api_key);
     s.openrouter_model_name = j.value("openrouter_model_name", d.openrouter_model_name);
+
+    s.ollama_model_name = j.value("ollama_model_name", d.ollama_model_name);
+    s.ollama_base_url = get_trimmed_json_string(j, "ollama_base_url", d.ollama_base_url);
 
     s.anthropic_api_key = get_trimmed_json_string(j, "anthropic_api_key", d.anthropic_api_key);
     s.anthropic_model_name = j.value("anthropic_model_name", d.anthropic_model_name);
@@ -257,6 +271,7 @@ static bool load_settings_from_file(settings_t& settings, const qstring& path)
         req("gemini_api_key"); req("gemini_model_name"); req("gemini_base_url");
         req("openai_api_key"); req("openai_model_name"); req("openai_base_url");
         req("openrouter_api_key"); req("openrouter_model_name");
+        req("ollama_model_name"); req("ollama_base_url");
         req("anthropic_api_key"); req("anthropic_model_name"); req("anthropic_base_url");
         req("copilot_proxy_address"); req("copilot_model_name");
         req("xref_context_count"); req("xref_analysis_depth"); req("xref_code_snippet_lines");
@@ -291,6 +306,8 @@ settings_t::settings_t() :
     openai_base_url(""),
     openrouter_api_key(""),
     openrouter_model_name("moonshotai/kimi-k2:free"),
+    ollama_model_name("llama3.1"),
+    ollama_base_url("http://127.0.0.1:11434"),
     anthropic_api_key(""),
     anthropic_model_name("claude-sonnet-4-5"),
     anthropic_base_url(""),
@@ -378,6 +395,7 @@ std::string settings_t::get_active_api_key() const
     if (provider == "gemini") return gemini_api_key;
     if (provider == "openai") return openai_api_key;
     if (provider == "openrouter") return openrouter_api_key;
+    if (provider == "ollama") return "local";
     if (provider == "anthropic") return anthropic_api_key;
     if (provider == "copilot") return copilot_proxy_address;
     return "";
@@ -390,6 +408,11 @@ void settings_t::prompt_for_api_key()
     if (provider == "copilot")
     {
         warning("AI Assistant: Copilot provider is selected, but the proxy address is not configured. Please set it in the settings dialog.");
+        return;
+    }
+    if (provider == "ollama")
+    {
+        warning("AI Assistant: Ollama provider is selected, but the base URL or model is not configured. Please set it in the settings dialog.");
         return;
     }
 
